@@ -13,8 +13,8 @@ export const profile = {
   ],
   status: 'open_to_work',
   email: 'builtbykayde@gmail.com',
-  github: { label: '[username]', url: '#' },
-  linkedin: { label: '[username]', url: '#' },
+  github: { label: '[username]', url: 'https://github.com/BuiltByKayde' },
+  linkedin: { label: '[username]', url: 'https://www.linkedin.com/in/kayde-denton-487617451/' },
   // Lives in /public. This web copy leaves out your street address and date of birth.
   cvUrl: '/Kayde-Denton-CV.pdf',
   // Paste a Formspree (or similar) endpoint here to have the contact form send
@@ -80,7 +80,10 @@ export const changelog = [
     status: 'upcoming',
     title: 'Joining a team',
     body: 'A role where I ship real features alongside people I can learn from.',
-    changes: ['Code review, pairing and shipping every week', 'Your product, your users, your stack'],
+    changes: [
+      'Code review, pairing and shipping every week',
+      'Your product, your users, your stack',
+    ],
   },
   {
     version: 'v1.2',
@@ -144,7 +147,13 @@ export const projects = [
 ];
 
 export const principles = [
-  { title: 'Read before writing', body: 'Understand the codebase and the problem before adding to either.' },
-  { title: 'Ship small, ship often', body: 'Small pull requests, quick feedback, fewer surprises.' },
+  {
+    title: 'Read before writing',
+    body: 'Understand the codebase and the problem before adding to either.',
+  },
+  {
+    title: 'Ship small, ship often',
+    body: 'Small pull requests, quick feedback, fewer surprises.',
+  },
   { title: 'Ask early', body: 'A five-minute question beats a two-day wrong turn.' },
 ];
