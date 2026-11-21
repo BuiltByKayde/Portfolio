@@ -6,7 +6,7 @@
 
 The source code for my portfolio site, built with React and Vite.
 
-[**View the live site →**](https://kayde-portfolio.vercel.app) &nbsp;·&nbsp; [Email me](mailto:builtbykayde@gmail.com)
+[**View the live site →**](https://builtbykayde.vercel.app) &nbsp;·&nbsp; [Email me](mailto:builtbykayde@gmail.com)
 
 ![React](https://img.shields.io/badge/React_18-20232A?style=flat&logo=react&logoColor=61DAFB)
 ![Vite](https://img.shields.io/badge/Vite-646CFF?style=flat&logo=vite&logoColor=white)
