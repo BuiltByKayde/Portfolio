@@ -13,8 +13,8 @@ export const profile = {
   ],
   status: 'open_to_work',
   email: 'builtbykayde@gmail.com',
-  github: { label: '[username]', url: 'https://github.com/BuiltByKayde' },
-  linkedin: { label: '[username]', url: 'https://www.linkedin.com/in/kayde-denton-487617451/' },
+  github: { label: '[BuiltByKayde]', url: 'https://github.com/BuiltByKayde' },
+  linkedin: { label: '[Kayde Denton]', url: 'https://www.linkedin.com/in/kayde-denton-487617451/' },
   // Lives in /public. This web copy leaves out your street address and date of birth.
   cvUrl: '/Kayde-Denton-CV.pdf',
   // Paste a Formspree (or similar) endpoint here to have the contact form send

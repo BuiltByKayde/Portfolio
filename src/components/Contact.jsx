@@ -8,22 +8,76 @@ const topics = [
   { id: 'hi', label: 'Just saying hi' },
 ];
 
+// Messages go straight into the `leads` table in Supabase (see supabase/leads.sql).
+// A plain fetch keeps the Supabase library out of the public site's bundle.
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
+async function saveLead({ name, email, topic, message, phone, business }) {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/leads`, {
+    method: 'POST',
+    headers: {
+      apikey: SUPABASE_KEY,
+      'Content-Type': 'application/json',
+      Prefer: 'return=minimal',
+    },
+    body: JSON.stringify({ name, email, topic, message, phone, business }),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    const err = new Error(body.message || `HTTP ${res.status}`);
+    err.friendly = body.code === 'P0001' ? body.message : '';
+    throw err;
+  }
+}
+
 function ContactForm() {
   const [topic, setTopic] = useState('role');
   // idle | sending | sent | mailto | error
   const [status, setStatus] = useState('idle');
+  const [errorText, setErrorText] = useState('');
 
   async function handleSubmit(e) {
     e.preventDefault();
     const form = e.currentTarget;
     const data = new FormData(form);
     const topicLabel = topics.find((t) => t.id === topic).label;
+
+    // Spam trap filled in: act as if it worked, save nothing.
+    if (data.get('_gotcha')) {
+      form.reset();
+      setStatus('sent');
+      return;
+    }
+
+    if (SUPABASE_URL && SUPABASE_KEY) {
+      setStatus('sending');
+      setErrorText('');
+      try {
+        await saveLead({
+          name: String(data.get('name')).trim(),
+          email: String(data.get('email')).trim(),
+          topic,
+          message: String(data.get('message')).trim(),
+          phone: String(data.get('phone') ?? '').trim() || null,
+          business: topic === 'freelance' ? String(data.get('business') ?? '').trim() || null : null,
+        });
+        form.reset();
+        setStatus('sent');
+      } catch (err) {
+        setErrorText(err.friendly || '');
+        setStatus('error');
+      }
+      return;
+    }
+
     data.set('topic', topicLabel);
 
     // No endpoint configured: hand off to the visitor's email app.
     if (!profile.formEndpoint) {
       const subject = `${topicLabel} — from ${data.get('name')}`;
-      const body = `${data.get('message')}\n\n${data.get('name')} · ${data.get('email')}`;
+      const extra = [data.get('business'), data.get('phone')].filter(Boolean).join(' · ');
+      const body = `${data.get('message')}\n\n${data.get('name')} · ${data.get('email')}${extra ? ` · ${extra}` : ''}`;
       window.location.href = `mailto:${profile.email}?subject=${encodeURIComponent(
         subject
       )}&body=${encodeURIComponent(body)}`;
@@ -95,6 +149,22 @@ function ContactForm() {
           <input id="cf-email" name="email" className="field" type="email" autoComplete="email" placeholder="you@company.com" required />
         </div>
       </div>
+      <div className="grid2 form__row">
+        <div className="field-wrap">
+          <label htmlFor="cf-phone">
+            Phone <span className="field-hint">optional</span>
+          </label>
+          <input id="cf-phone" name="phone" className="field" type="tel" autoComplete="tel" placeholder="021 123 4567" maxLength={40} />
+        </div>
+        {topic === 'freelance' && (
+          <div className="field-wrap">
+            <label htmlFor="cf-business">
+              Business name <span className="field-hint">optional</span>
+            </label>
+            <input id="cf-business" name="business" className="field" type="text" autoComplete="organization" placeholder="Your business" maxLength={120} />
+          </div>
+        )}
+      </div>
       <div className="field-wrap">
         <label htmlFor="cf-msg">Message</label>
         <textarea id="cf-msg" name="message" className="field" rows="5" placeholder="A few lines about the role or project" required />
@@ -104,7 +174,9 @@ function ContactForm() {
 
       {status === 'error' && (
         <p className="form__error" role="alert">
-          That didn't send. Try again, or email me directly at {profile.email}.
+          {errorText
+            ? `${errorText} You can also email me directly at ${profile.email}.`
+            : `That didn't send. Try again, or email me directly at ${profile.email}.`}
         </p>
       )}
 

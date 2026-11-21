@@ -56,6 +56,22 @@ const paths = {
   ),
   arrowLeft: <path d="M19 12H5M11 6l-6 6 6 6" />,
   check: <path d="M5 12.5l4.5 4.5L19 7.5" />,
+  checks: <path d="M3 12.5l4 4 8-9M11 16.5l1 1 9-10" />,
+  inbox: <path d="M3 13l3-8h12l3 8v6H3zM3 13h5l1 3h6l1-3h5" />,
+  reply: <path d="M10 8L5 12l5 4M5 12h9a5 5 0 0 1 5 5v1" />,
+  userPlus: (
+    <>
+      <circle cx="9" cy="8" r="3.5" />
+      <path d="M2.5 20c.6-3.4 3.3-5.5 6.5-5.5 1.6 0 3 .5 4.1 1.4M18 14v6M15 17h6" />
+    </>
+  ),
+  archive: <path d="M3 5h18v4H3zM5 9v10h14V9M10 13h4" />,
+  clock: (
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 7v5l3 2" />
+    </>
+  ),
 };
 
 export default function Icon({ name, size = 20 }) {
