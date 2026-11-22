@@ -39,7 +39,7 @@ export default function InvoicePrint({ invoice: inv, client, settings, justSent,
           <button type="button" className="ip-btn ip-btn--primary" onClick={() => window.print()}>
             <Icon name="print" size={18} /> Print / Save PDF
           </button>
-          <a className="ip-btn" href={invoiceEmail(inv, c, client, settings)}>
+          <a className="ip-btn" href={invoiceEmail(inv, c, client, settings)} target="_blank" rel="noopener noreferrer">
             <Icon name="send" size={18} /> Email to client
           </a>
         </div>

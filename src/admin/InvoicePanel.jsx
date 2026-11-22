@@ -2,6 +2,7 @@ import { useState } from 'react';
 import Icon from './Icon.jsx';
 import { initials, tint } from './format.js';
 import { calc, money, moneyShort, niceDate, lineAmount, todayISO, STATES } from './invoiceMath.js';
+import { gmailCompose, newTab } from './gmail.js';
 
 // Pre-written email: opens the email app with the subject and a short message.
 export function invoiceEmail(inv, c, client, settings) {
@@ -14,7 +15,7 @@ export function invoiceEmail(inv, c, client, settings) {
   const body = reminder
     ? `Hi ${first},\n\nJust a friendly reminder that invoice ${inv.number} (${money(c.owing)}) was due on ${niceDate(inv.dueOn)}. No stress if it’s already on its way!${bank}\n\nThanks,\n${settings.ownerName || 'Kayde'}`
     : `Hi ${first},\n\nPlease find invoice ${inv.number} for ${money(c.owing || c.total)}, due ${niceDate(inv.dueOn)}. I’ve attached it as a PDF.${bank}\n\nThanks,\n${settings.ownerName || 'Kayde'}`;
-  return `mailto:${client?.email || ''}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  return gmailCompose({ to: client?.email || '', subject, body });
 }
 
 export default function InvoicePanel({
@@ -131,6 +132,7 @@ export default function InvoicePanel({
           <a
             className="abtn abtn--sm"
             href={invoiceEmail(inv, c, client, settings)}
+            {...newTab}
             onClick={() => {
               if (inv.status === 'draft') onMarkSent();
             }}

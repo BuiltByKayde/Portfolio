@@ -2,6 +2,7 @@ import { useState } from 'react';
 import Icon from './Icon.jsx';
 import { fullDate, initials, domain, tint } from './format.js';
 import { calc, moneyShort, STATES } from './invoiceMath.js';
+import { gmailCompose } from './gmail.js';
 
 function CopyButton({ value, label }) {
   const [done, setDone] = useState(false);
@@ -96,7 +97,9 @@ export default function ClientPanel({
           </Detail>
           <Detail icon="mail" label="Email" copy={client.email || null}>
             {client.email ? (
-              <a href={`mailto:${client.email}`}>{client.email}</a>
+              <a href={gmailCompose({ to: client.email })} target="_blank" rel="noopener noreferrer">
+                {client.email}
+              </a>
             ) : (
               <span className="amuted">Not added</span>
             )}

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import Icon from './Icon.jsx';
 import { fullDate, initials, tint } from './format.js';
 import { TOPICS, STATUSES } from './leadsStore.js';
+import { gmailCompose, newTab } from './gmail.js';
 
 function Detail({ icon, label, children, htmlFor }) {
   return (
@@ -40,7 +41,12 @@ export default function LeadPanel({
   const notes = lead.notes ?? [];
   // Only counts as converted once a client actually exists for it.
   const isConverted = lead.status === 'converted' && !!lead.clientId;
-  const replyHref = `mailto:${lead.email}?subject=${encodeURIComponent('Re: your message to builtbykayde')}`;
+  const first = lead.name.split(/\s+/)[0] || 'there';
+  const replyHref = gmailCompose({
+    to: lead.email,
+    subject: 'Re: your message to builtbykayde',
+    body: `Kia ora ${first},\n\nThanks for getting in touch!\n\n\n\n> ${lead.message.replace(/\n/g, '\n> ')}`,
+  });
 
   async function submit(e) {
     e.preventDefault();
@@ -107,7 +113,7 @@ export default function LeadPanel({
             </div>
           ) : (
             <div className="aactions">
-              <a className="abtn" href={replyHref} onClick={onReplied}>
+              <a className="abtn" href={replyHref} onClick={onReplied} {...newTab}>
                 <Icon name="reply" size={18} /> Reply by email
               </a>
               <button type="button" className="abtn abtn--primary" onClick={convert} disabled={converting}>
@@ -120,7 +126,9 @@ export default function LeadPanel({
         <div className="apanel__section">
           <h3 className="apanel__heading">Details</h3>
           <Detail icon="mail" label="Email">
-            <a href={`mailto:${lead.email}`}>{lead.email}</a>
+            <a href={gmailCompose({ to: lead.email })} {...newTab}>
+              {lead.email}
+            </a>
           </Detail>
           <Detail icon="phone" label="Phone">
             {lead.phone ? (
