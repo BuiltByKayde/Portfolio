@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import Icon from './Icon.jsx';
 import { fullDate, initials, domain, tint } from './format.js';
+import { calc, moneyShort, STATES } from './invoiceMath.js';
 
 function CopyButton({ value, label }) {
   const [done, setDone] = useState(false);
@@ -40,7 +41,17 @@ function Detail({ icon, label, children, copy }) {
   );
 }
 
-export default function ClientPanel({ client, onClose, onEdit, onDelete, onAddComment, onDeleteComment }) {
+export default function ClientPanel({
+  client,
+  invoices = [],
+  onClose,
+  onEdit,
+  onDelete,
+  onNewInvoice,
+  onOpenInvoice,
+  onAddComment,
+  onDeleteComment,
+}) {
   const [draft, setDraft] = useState('');
   const comments = client.comments ?? [];
 
@@ -110,6 +121,38 @@ export default function ClientPanel({ client, onClose, onEdit, onDelete, onAddCo
             {fullDate(client.createdAt)}
           </Detail>
         </div>
+
+        {onNewInvoice && (
+          <div className="apanel__section">
+            <h3 className="apanel__heading apanel__heading--row">
+              <span>
+                Invoices <span className="amuted">{invoices.length}</span>
+              </span>
+              <button type="button" className="abtn abtn--sm" onClick={onNewInvoice}>
+                <Icon name="plus" size={16} /> New invoice
+              </button>
+            </h3>
+            {invoices.length === 0 ? (
+              <p className="amuted apanel__none">No invoices for this client yet.</p>
+            ) : (
+              <ul className="aclinvs">
+                {invoices.map((inv) => {
+                  const c = calc(inv);
+                  return (
+                    <li key={inv.id}>
+                      <button type="button" className="aclinv" onClick={() => onOpenInvoice(inv.id)}>
+                        <span className="aclinv__num">{inv.number}</span>
+                        <span className="aclinv__title">{inv.title || '—'}</span>
+                        <span className="aclinv__amt">{moneyShort(c.total)}</span>
+                        <span className={`astatus astatus--${c.state}`}>{STATES[c.state]}</span>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
+        )}
 
         <div className="apanel__section">
           <h3 className="apanel__heading">
