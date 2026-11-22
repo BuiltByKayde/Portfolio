@@ -46,7 +46,11 @@ import {
   deletePreset,
 } from './invoicesStore.js';
 import { calc, dueFromTerms, nextNumber, todayISO } from './invoiceMath.js';
+import ReviewList from './ReviewList.jsx';
+import { ReviewView, ReviewForm } from './ReviewPanel.jsx';
+import { listReviews, createReview, updateReview, deleteReview, loadSampleReviews } from './reviewsStore.js';
 import './invoices.css';
+import './reviews-admin.css';
 
 const sorters = {
   recent: (a, b) => b.createdAt.localeCompare(a.createdAt),
@@ -78,6 +82,7 @@ function matchesLead(lead, q) {
 function parseRoute() {
   const p = window.location.pathname.replace(/\/+$/, '');
   if (p === '/admin/leads') return { section: 'leads' };
+  if (p === '/admin/reviews') return { section: 'reviews' };
   if (p === '/admin/settings') return { section: 'settings' };
   if (p === '/admin/invoices') return { section: 'invoices' };
   if (p === '/admin/invoices/new') return { section: 'invoices', view: 'new' };
@@ -88,6 +93,7 @@ function parseRoute() {
 
 function routePath(r) {
   if (r.section === 'leads') return '/admin/leads';
+  if (r.section === 'reviews') return '/admin/reviews';
   if (r.section === 'settings') return '/admin/settings';
   if (r.section === 'invoices') {
     if (r.view === 'new') return '/admin/invoices/new';
@@ -128,6 +134,13 @@ export default function Dashboard({ session, onSignOut }) {
   const [newDraft, setNewDraft] = useState(null); // prefill for /admin/invoices/new
   const [justSent, setJustSent] = useState(false);
 
+  // Reviews
+  const [reviews, setReviews] = useState([]);
+  const [rvLoading, setRvLoading] = useState(true);
+  const [rvFilter, setRvFilter] = useState('all');
+  const [rvId, setRvId] = useState(null);
+  const [rvPanel, setRvPanel] = useState(null); // 'view' | 'edit' | 'new' | null
+
   // Runs a database action and shows a message instead of failing silently.
   const attempt = useCallback(async (fn) => {
     try {
@@ -163,11 +176,18 @@ export default function Dashboard({ session, onSignOut }) {
     setInvLoading(false);
   }, [attempt]);
 
+  const refreshReviews = useCallback(async () => {
+    setRvLoading(true);
+    await attempt(async () => setReviews(await listReviews()));
+    setRvLoading(false);
+  }, [attempt]);
+
   useEffect(() => {
     refresh();
     refreshLeads();
     refreshInvoices();
-  }, [refresh, refreshLeads, refreshInvoices]);
+    refreshReviews();
+  }, [refresh, refreshLeads, refreshInvoices, refreshReviews]);
 
   // Back/forward buttons move between pages too.
   useEffect(() => {
@@ -184,6 +204,7 @@ export default function Dashboard({ session, onSignOut }) {
       setPanel((p) => (p === 'view' ? null : p));
       setLeadId(null);
       setInvId(null);
+      setRvPanel((p) => (p === 'view' ? null : p));
     }
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -397,6 +418,43 @@ export default function Dashboard({ session, onSignOut }) {
     setInvId(null);
   }
 
+  // ---------- Reviews ----------
+
+  const review = reviews.find((r) => r.id === rvId) ?? null;
+  const pendingReviews = reviews.filter((r) => r.status === 'pending').length;
+
+  const replaceReview = (updated) => {
+    if (!updated) return;
+    setReviews((prev) =>
+      prev.some((r) => r.id === updated.id) ? prev.map((r) => (r.id === updated.id ? updated : r)) : [updated, ...prev]
+    );
+  };
+
+  function newReview() {
+    go({ section: 'reviews' });
+    setRvId(null);
+    setRvPanel('new');
+  }
+
+  async function saveReview(f) {
+    // Without permission a review can never be public.
+    const fields = f.consent ? f : { ...f, status: 'hidden', featured: false };
+    const ok = await attempt(async () => {
+      const saved = rvPanel === 'new' ? await createReview(fields) : await updateReview(rvId, fields);
+      replaceReview(saved);
+      setRvId(saved.id);
+    });
+    if (ok) setRvPanel('view');
+  }
+
+  async function removeReview(r) {
+    if (!window.confirm(`Delete ${r.name}'s review? This can't be undone.`)) return;
+    if (!(await attempt(() => deleteReview(r.id)))) return;
+    setReviews((prev) => prev.filter((x) => x.id !== r.id));
+    setRvId(null);
+    setRvPanel(null);
+  }
+
   // ---------- Layout ----------
 
   // Printable invoice: its own full page, no admin chrome.
@@ -423,11 +481,27 @@ export default function Dashboard({ session, onSignOut }) {
   const isLeads = section === 'leads';
   const isInvoices = section === 'invoices';
   const isSettings = section === 'settings';
+  const isReviews = section === 'reviews';
   const isEditor = isInvoices && (view === 'new' || view === 'edit');
   const showInvPanel = isInvoices && !view && !!invoice;
-  const hasPanel = isLeads ? !!lead : isInvoices ? showInvPanel : section === 'clients' ? !!panel : false;
+  const showRvPanel = isReviews && (rvPanel === 'new' || (!!rvPanel && !!review));
+  const hasPanel = isLeads
+    ? !!lead
+    : isInvoices
+      ? showInvPanel
+      : isReviews
+        ? showRvPanel
+        : section === 'clients'
+          ? !!panel
+          : false;
   const userInitial = (session.email || 'K')[0].toUpperCase();
-  const searchLabel = isLeads ? 'Search leads' : isInvoices ? 'Search invoices' : 'Search clients';
+  const searchLabel = isLeads
+    ? 'Search leads'
+    : isInvoices
+      ? 'Search invoices'
+      : isReviews
+        ? 'Search reviews'
+        : 'Search clients';
 
   let editorInitial = null;
   if (isEditor) {
@@ -503,7 +577,11 @@ export default function Dashboard({ session, onSignOut }) {
 
       <div className={`adm-body${hasPanel ? ' has-panel' : ''}`}>
         <aside className={`adm-nav${navOpen ? ' is-open' : ''}`} aria-label="Admin sections">
-          {isInvoices || isSettings ? (
+          {isReviews ? (
+            <button type="button" className="adm-new" onClick={newReview}>
+              <Icon name="plus" size={22} /> Add review
+            </button>
+          ) : isInvoices || isSettings ? (
             <button type="button" className="adm-new" onClick={() => newInvoice()}>
               <Icon name="plus" size={22} /> New invoice
             </button>
@@ -553,6 +631,22 @@ export default function Dashboard({ session, onSignOut }) {
                 </span>
               ) : (
                 <span className="adm-navitem__count">{invoices.length}</span>
+              )}
+            </a>
+            <a
+              href="/admin/reviews"
+              className={`adm-navitem${isReviews ? ' is-active' : ''}`}
+              aria-current={isReviews ? 'page' : undefined}
+              onClick={(e) => go({ section: 'reviews' }, e)}
+            >
+              <Icon name="star" />
+              <span>Reviews</span>
+              {pendingReviews > 0 ? (
+                <span className="adm-navitem__pending" aria-label={`${pendingReviews} waiting for approval`}>
+                  {pendingReviews}
+                </span>
+              ) : (
+                <span className="adm-navitem__count">{reviews.length}</span>
               )}
             </a>
             <div className="adm-navsep" role="separator" />
@@ -641,7 +735,27 @@ export default function Dashboard({ session, onSignOut }) {
             />
           )}
 
-          {isInvoices && view === 'print' && <p className="alist__empty">That invoice doesn’t exist any more.</p>}
+          {isReviews && (
+            <ReviewList
+              reviews={reviews}
+              loading={rvLoading}
+              query={query.trim()}
+              filter={rvFilter}
+              onFilter={setRvFilter}
+              selectedId={rvPanel ? rvId : null}
+              onOpen={(id) => {
+                setRvId(id);
+                setRvPanel('view');
+                setNavOpen(false);
+              }}
+              onRefresh={refreshReviews}
+              onNew={newReview}
+              canLoadSamples={!authConnected}
+              onLoadSamples={() => attempt(async () => setReviews(await loadSampleReviews()))}
+            />
+          )}
+
+          {isInvoices && view === 'print' &&<p className="alist__empty">That invoice doesn’t exist any more.</p>}
 
           {isEditor &&
             (invLoading ? (
@@ -701,6 +815,30 @@ export default function Dashboard({ session, onSignOut }) {
               onAddNote={(text) => attempt(async () => replaceLead(await addLeadNote(lead.id, text)))}
               onDeleteNote={(noteId) => attempt(async () => replaceLead(await deleteLeadNote(lead.id, noteId)))}
             />
+          </aside>
+        )}
+
+        {showRvPanel && (
+          <aside className="adm-panel" aria-label="Review details">
+            {rvPanel === 'view' && review && (
+              <ReviewView
+                key={review.id}
+                review={review}
+                onClose={() => setRvPanel(null)}
+                onEdit={() => setRvPanel('edit')}
+                onDelete={() => removeReview(review)}
+                onUpdate={(patch) => attempt(async () => replaceReview(await updateReview(review.id, patch)))}
+              />
+            )}
+            {(rvPanel === 'new' || (rvPanel === 'edit' && review)) && (
+              <ReviewForm
+                key={rvPanel === 'new' ? 'new' : review.id}
+                mode={rvPanel}
+                initial={rvPanel === 'edit' ? review : null}
+                onSave={saveReview}
+                onCancel={() => setRvPanel(rvPanel === 'edit' ? 'view' : null)}
+              />
+            )}
           </aside>
         )}
 

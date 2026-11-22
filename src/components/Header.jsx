@@ -1,16 +1,18 @@
 import { useAucklandTime } from '../hooks/useAucklandTime.js';
 import Logo from './Logo.jsx';
 
-const links = [
+const baseLinks = [
   ['#about', '01 about'],
   ['#stack', '02 stack'],
   ['#log', '03 changelog'],
   ['#work', '04 work'],
-  ['#contact', '05 contact'],
 ];
 
-export default function Header({ mode, onModeChange }) {
+export default function Header({ mode, onModeChange, hasReviews = false }) {
   const time = useAucklandTime();
+  const links = hasReviews
+    ? [...baseLinks, ['#reviews', '05 reviews'], ['#contact', '06 contact']]
+    : [...baseLinks, ['#contact', '05 contact']];
 
   return (
     <header className="header">

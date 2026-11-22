@@ -192,12 +192,12 @@ function ContactForm() {
   );
 }
 
-export default function Contact() {
+export default function Contact({ number = '05' }) {
   return (
     <section id="contact" className="wrap contact">
       <div className="row2" style={{ alignItems: 'start' }}>
         <div>
-          <p className="eyebrow">05 / CONTACT</p>
+          <p className="eyebrow">{number} / CONTACT</p>
           <h2 className="contact__title">
             Let's build
             <br />
