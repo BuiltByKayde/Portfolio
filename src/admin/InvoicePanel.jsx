@@ -90,8 +90,26 @@ export default function InvoicePanel({
         )}
 
         <div className="abalance">
+          {inv.kind !== 'full' && (
+            <div className="abalance__row">
+              <span>Full job</span>
+              <strong>{money(c.job)}</strong>
+            </div>
+          )}
+          {inv.kind === 'final' && (
+            <div className="abalance__row">
+              <span>Less deposit</span>
+              <strong>−{money(inv.lessAmount)}</strong>
+            </div>
+          )}
           <div className="abalance__row">
-            <span>Invoice total</span>
+            <span>
+              {inv.kind === 'deposit'
+                ? `This invoice: ${inv.depositPct}% deposit`
+                : inv.kind === 'final'
+                  ? 'This invoice: final balance'
+                  : 'Invoice total'}
+            </span>
             <strong>{money(c.total)}</strong>
           </div>
           <div className="abalance__row">

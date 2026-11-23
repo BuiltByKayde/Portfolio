@@ -506,6 +506,18 @@ export default function Dashboard({ session, onSignOut }) {
     setCpPanel(null);
   }
 
+  // " Month 2 of a 6-month minimum term (ends April 2027)." while the term is running.
+  function planTermNote(p, per) {
+    const min = p.minTermMonths;
+    if (!min || !p.startedOn) return '';
+    const [sy, sm] = p.startedOn.split('-').map(Number);
+    const [py, pm] = per.split('-').map(Number);
+    const n = py * 12 + pm - (sy * 12 + sm) + 1;
+    if (n < 1 || n > min) return '';
+    const end = new Date(sy, sm - 1 + min - 1, 1).toLocaleDateString('en-NZ', { month: 'long', year: 'numeric' });
+    return ` Month ${n} of a ${min}-month minimum term (ends ${end}), as set out in your care plan agreement.`;
+  }
+
   // Makes a draft invoice for this month for each plan, and links the two.
   async function createPlanInvoices(list) {
     setCpCreating(true);
@@ -520,7 +532,7 @@ export default function Dashboard({ session, onSignOut }) {
           clientId: p.clientId,
           title: `Website care plan: ${label}`,
           dueOn: dueFromTerms(today, '7'),
-          note: `Monthly care plan. Please use the reference ${p.reference || 'on this invoice'} for your automatic payment. New pages or features are quoted separately.`,
+          note: `Monthly care plan. Please use the reference ${p.reference || 'on this invoice'} for your automatic payment.${planTermNote(p, period)} New pages or features are quoted separately.`,
           lines: [
             {
               description: `${p.tier} care plan, ${label}${
