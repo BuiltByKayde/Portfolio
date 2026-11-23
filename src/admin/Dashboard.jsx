@@ -49,8 +49,23 @@ import { calc, dueFromTerms, nextNumber, todayISO } from './invoiceMath.js';
 import ReviewList from './ReviewList.jsx';
 import { ReviewView, ReviewForm } from './ReviewPanel.jsx';
 import { listReviews, createReview, updateReview, deleteReview, loadSampleReviews } from './reviewsStore.js';
+import CarePlanList from './CarePlanList.jsx';
+import { CarePlanView, CarePlanForm } from './CarePlanPanel.jsx';
+import {
+  listPlans,
+  savePlan,
+  setPlanStatus,
+  deletePlan,
+  addPlanLog,
+  deletePlanLog,
+  linkPlanInvoice,
+  currentPeriod,
+  periodLabel,
+  minutesLabel,
+} from './carePlansStore.js';
 import './invoices.css';
 import './reviews-admin.css';
+import './care-plans.css';
 
 const sorters = {
   recent: (a, b) => b.createdAt.localeCompare(a.createdAt),
@@ -83,6 +98,7 @@ function parseRoute() {
   const p = window.location.pathname.replace(/\/+$/, '');
   if (p === '/admin/leads') return { section: 'leads' };
   if (p === '/admin/reviews') return { section: 'reviews' };
+  if (p === '/admin/care-plans') return { section: 'care' };
   if (p === '/admin/settings') return { section: 'settings' };
   if (p === '/admin/invoices') return { section: 'invoices' };
   if (p === '/admin/invoices/new') return { section: 'invoices', view: 'new' };
@@ -94,6 +110,7 @@ function parseRoute() {
 function routePath(r) {
   if (r.section === 'leads') return '/admin/leads';
   if (r.section === 'reviews') return '/admin/reviews';
+  if (r.section === 'care') return '/admin/care-plans';
   if (r.section === 'settings') return '/admin/settings';
   if (r.section === 'invoices') {
     if (r.view === 'new') return '/admin/invoices/new';
@@ -141,6 +158,13 @@ export default function Dashboard({ session, onSignOut }) {
   const [rvId, setRvId] = useState(null);
   const [rvPanel, setRvPanel] = useState(null); // 'view' | 'edit' | 'new' | null
 
+  // Care plans
+  const [plans, setPlans] = useState([]);
+  const [cpLoading, setCpLoading] = useState(true);
+  const [cpId, setCpId] = useState(null);
+  const [cpPanel, setCpPanel] = useState(null); // 'view' | 'edit' | 'new' | null
+  const [cpCreating, setCpCreating] = useState(false);
+
   // Runs a database action and shows a message instead of failing silently.
   const attempt = useCallback(async (fn) => {
     try {
@@ -176,6 +200,12 @@ export default function Dashboard({ session, onSignOut }) {
     setInvLoading(false);
   }, [attempt]);
 
+  const refreshPlans = useCallback(async () => {
+    setCpLoading(true);
+    await attempt(async () => setPlans(await listPlans()));
+    setCpLoading(false);
+  }, [attempt]);
+
   const refreshReviews = useCallback(async () => {
     setRvLoading(true);
     await attempt(async () => setReviews(await listReviews()));
@@ -187,7 +217,8 @@ export default function Dashboard({ session, onSignOut }) {
     refreshLeads();
     refreshInvoices();
     refreshReviews();
-  }, [refresh, refreshLeads, refreshInvoices, refreshReviews]);
+    refreshPlans();
+  }, [refresh, refreshLeads, refreshInvoices, refreshReviews, refreshPlans]);
 
   // Back/forward buttons move between pages too.
   useEffect(() => {
@@ -205,6 +236,7 @@ export default function Dashboard({ session, onSignOut }) {
       setLeadId(null);
       setInvId(null);
       setRvPanel((p) => (p === 'view' ? null : p));
+      setCpPanel((p) => (p === 'view' ? null : p));
     }
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -267,6 +299,7 @@ export default function Dashboard({ session, onSignOut }) {
     setClients((prev) => prev.filter((c) => !ids.includes(c.id)));
     setChecked((prev) => new Set([...prev].filter((id) => !ids.includes(id))));
     setInvoices((prev) => prev.map((inv) => (ids.includes(inv.clientId) ? { ...inv, clientId: null } : inv)));
+    setPlans((prev) => prev.filter((p) => !ids.includes(p.clientId)));
     if (ids.includes(selectedId)) {
       setSelectedId(null);
       setPanel(null);
@@ -415,7 +448,95 @@ export default function Dashboard({ session, onSignOut }) {
     if (!window.confirm(`Delete ${inv.number}?${extra} This can't be undone.`)) return;
     if (!(await attempt(() => deleteInvoice(inv.id)))) return;
     setInvoices((prev) => prev.filter((i) => i.id !== inv.id));
+    setPlans((prev) =>
+      prev.map((p) => ({ ...p, invoiceLinks: p.invoiceLinks.filter((l) => l.invoiceId !== inv.id) }))
+    );
     setInvId(null);
+  }
+
+  // ---------- Care plans ----------
+
+  const period = currentPeriod();
+  const invoicesById = useMemo(() => new Map(invoices.map((i) => [i.id, i])), [invoices]);
+  const plan = plans.find((p) => p.id === cpId) ?? null;
+
+  // This month's (or another month's) invoice for a plan, and where it's at.
+  const monthOf = (p, per = period) => {
+    const link = p.invoiceLinks.find((l) => l.period === per);
+    const inv = link ? invoicesById.get(link.invoiceId) : null;
+    if (!inv) return { state: 'none', owing: 0, total: 0, inv: null };
+    const c = calc(inv);
+    return { state: c.state, owing: c.owing, total: c.total, inv };
+  };
+
+  const missedPlans = plans.filter((p) => p.status === 'active' && monthOf(p).state === 'overdue').length;
+
+  // The fixed payment reference, if this invoice bills a care plan.
+  const planReference = (invoiceId) =>
+    plans.find((p) => p.invoiceLinks.some((l) => l.invoiceId === invoiceId))?.reference || '';
+
+  const replacePlan = (updated) => {
+    if (!updated) return;
+    setPlans((prev) =>
+      prev.some((p) => p.id === updated.id) ? prev.map((p) => (p.id === updated.id ? updated : p)) : [updated, ...prev]
+    );
+  };
+
+  function newPlan() {
+    go({ section: 'care' });
+    setCpId(null);
+    setCpPanel('new');
+  }
+
+  async function saveCarePlan(f) {
+    const ok = await attempt(async () => {
+      const saved = await savePlan(f);
+      replacePlan(saved);
+      setCpId(saved.id);
+    });
+    if (ok) setCpPanel('view');
+  }
+
+  async function removePlan(p) {
+    const name = clientsById.get(p.clientId)?.name || 'this client';
+    if (!window.confirm(`Delete the care plan for ${name}? Its invoices are kept. This can't be undone.`)) return;
+    if (!(await attempt(() => deletePlan(p.id)))) return;
+    setPlans((prev) => prev.filter((x) => x.id !== p.id));
+    setCpId(null);
+    setCpPanel(null);
+  }
+
+  // Makes a draft invoice for this month for each plan, and links the two.
+  async function createPlanInvoices(list) {
+    setCpCreating(true);
+    await attempt(async () => {
+      let known = invoices;
+      const label = periodLabel(period);
+      const today = todayISO();
+      for (const p of list) {
+        const inv = await saveInvoice({
+          ...blankInvoice(),
+          number: nextNumber(known),
+          clientId: p.clientId,
+          title: `Website care plan: ${label}`,
+          dueOn: dueFromTerms(today, '7'),
+          note: `Monthly care plan. Please use the reference ${p.reference || 'on this invoice'} for your automatic payment. New pages or features are quoted separately.`,
+          lines: [
+            {
+              description: `${p.tier} care plan, ${label}${
+                p.minutesIncluded ? `: includes up to ${minutesLabel(p.minutesIncluded)} of small changes` : ''
+              }`,
+              qty: 1,
+              rate: p.price,
+            },
+          ],
+        });
+        known = [inv, ...known];
+        replaceInvoice(inv);
+        replacePlan(await linkPlanInvoice(p.id, period, inv.id));
+      }
+    });
+    setCpCreating(false);
   }
 
   // ---------- Reviews ----------
@@ -466,6 +587,7 @@ export default function Dashboard({ session, onSignOut }) {
           invoice={invoice}
           client={clientsById.get(invoice.clientId)}
           settings={settings}
+          reference={planReference(invoice.id)}
           justSent={justSent}
           onBack={() => {
             setJustSent(false);
@@ -485,15 +607,19 @@ export default function Dashboard({ session, onSignOut }) {
   const isEditor = isInvoices && (view === 'new' || view === 'edit');
   const showInvPanel = isInvoices && !view && !!invoice;
   const showRvPanel = isReviews && (rvPanel === 'new' || (!!rvPanel && !!review));
+  const isCare = section === 'care';
+  const showCpPanel = isCare && (cpPanel === 'new' || (!!cpPanel && !!plan));
   const hasPanel = isLeads
     ? !!lead
     : isInvoices
       ? showInvPanel
       : isReviews
         ? showRvPanel
-        : section === 'clients'
-          ? !!panel
-          : false;
+        : isCare
+          ? showCpPanel
+          : section === 'clients'
+            ? !!panel
+            : false;
   const userInitial = (session.email || 'K')[0].toUpperCase();
   const searchLabel = isLeads
     ? 'Search leads'
@@ -501,7 +627,9 @@ export default function Dashboard({ session, onSignOut }) {
       ? 'Search invoices'
       : isReviews
         ? 'Search reviews'
-        : 'Search clients';
+        : isCare
+          ? 'Search care plans'
+          : 'Search clients';
 
   let editorInitial = null;
   if (isEditor) {
@@ -577,7 +705,11 @@ export default function Dashboard({ session, onSignOut }) {
 
       <div className={`adm-body${hasPanel ? ' has-panel' : ''}`}>
         <aside className={`adm-nav${navOpen ? ' is-open' : ''}`} aria-label="Admin sections">
-          {isReviews ? (
+          {isCare ? (
+            <button type="button" className="adm-new" onClick={newPlan}>
+              <Icon name="plus" size={22} /> New care plan
+            </button>
+          ) : isReviews ? (
             <button type="button" className="adm-new" onClick={newReview}>
               <Icon name="plus" size={22} /> Add review
             </button>
@@ -631,6 +763,22 @@ export default function Dashboard({ session, onSignOut }) {
                 </span>
               ) : (
                 <span className="adm-navitem__count">{invoices.length}</span>
+              )}
+            </a>
+            <a
+              href="/admin/care-plans"
+              className={`adm-navitem${isCare ? ' is-active' : ''}`}
+              aria-current={isCare ? 'page' : undefined}
+              onClick={(e) => go({ section: 'care' }, e)}
+            >
+              <Icon name="shield" />
+              <span>Care plans</span>
+              {missedPlans > 0 ? (
+                <span className="adm-navitem__warn" aria-label={`${missedPlans} missed payments`}>
+                  {missedPlans}
+                </span>
+              ) : (
+                <span className="adm-navitem__count">{plans.filter((p) => p.status === 'active').length}</span>
               )}
             </a>
             <a
@@ -735,6 +883,30 @@ export default function Dashboard({ session, onSignOut }) {
             />
           )}
 
+          {isCare && (
+            <CarePlanList
+              plans={plans}
+              clientsById={clientsById}
+              loading={cpLoading}
+              query={query.trim()}
+              period={period}
+              monthOf={monthOf}
+              selectedId={cpPanel ? cpId : null}
+              onOpen={(id) => {
+                setCpId(id);
+                setCpPanel('view');
+                setNavOpen(false);
+              }}
+              onNew={newPlan}
+              onRefresh={() => {
+                refreshPlans();
+                refreshInvoices();
+              }}
+              onCreateAll={createPlanInvoices}
+              creating={cpCreating}
+            />
+          )}
+
           {isReviews && (
             <ReviewList
               reviews={reviews}
@@ -815,6 +987,50 @@ export default function Dashboard({ session, onSignOut }) {
               onAddNote={(text) => attempt(async () => replaceLead(await addLeadNote(lead.id, text)))}
               onDeleteNote={(noteId) => attempt(async () => replaceLead(await deleteLeadNote(lead.id, noteId)))}
             />
+          </aside>
+        )}
+
+        {showCpPanel && (
+          <aside className="adm-panel" aria-label="Care plan details">
+            {cpPanel === 'view' && plan && (
+              <CarePlanView
+                key={plan.id}
+                plan={plan}
+                client={clientsById.get(plan.clientId)}
+                period={period}
+                monthOf={monthOf}
+                onClose={() => setCpPanel(null)}
+                onEdit={() => setCpPanel('edit')}
+                onDelete={() => removePlan(plan)}
+                onCreateInvoice={() => createPlanInvoices([plan])}
+                onOpenInvoice={(id) => {
+                  setInvId(id);
+                  go({ section: 'invoices' });
+                }}
+                onOpenClient={() => {
+                  go({ section: 'clients' });
+                  openClient(plan.clientId);
+                }}
+                onAddLog={(l) => attempt(async () => replacePlan(await addPlanLog(plan.id, l)))}
+                onDeleteLog={(logId) => attempt(async () => replacePlan(await deletePlanLog(plan.id, logId)))}
+                onStatus={(status) => attempt(async () => replacePlan(await setPlanStatus(plan.id, status)))}
+              />
+            )}
+            {(cpPanel === 'new' || (cpPanel === 'edit' && plan)) && (
+              <CarePlanForm
+                key={cpPanel === 'new' ? 'new' : plan.id}
+                mode={cpPanel}
+                initial={
+                  cpPanel === 'edit'
+                    ? { ...plan, price: String(plan.price), minutesIncluded: String(plan.minutesIncluded), minTermMonths: String(plan.minTermMonths) }
+                    : null
+                }
+                clients={clients}
+                plans={plans}
+                onSave={saveCarePlan}
+                onCancel={() => setCpPanel(cpPanel === 'edit' ? 'view' : null)}
+              />
+            )}
           </aside>
         )}
 

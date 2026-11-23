@@ -10,7 +10,7 @@ function termsLabel(inv) {
   return t ? t.label : `${days} days`;
 }
 
-export default function InvoicePrint({ invoice: inv, client, settings, justSent, onBack }) {
+export default function InvoicePrint({ invoice: inv, client, settings, reference, justSent, onBack }) {
   const c = calc(inv);
   const gst = c.gst > 0;
   const title = gst ? 'Tax invoice' : 'Invoice';
@@ -193,7 +193,7 @@ export default function InvoicePrint({ invoice: inv, client, settings, justSent,
                 <dt>Account number</dt>
                 <dd>{settings.bankAccount}</dd>
                 <dt>Reference</dt>
-                <dd>{inv.number}</dd>
+                <dd>{reference || inv.number}</dd>
               </dl>
             ) : (
               <p className="no-print inv-missing">

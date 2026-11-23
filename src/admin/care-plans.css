@@ -1,0 +1,327 @@
+/* ---------- Care plans in the admin ---------- */
+.cp-per {
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0;
+  color: var(--muted);
+}
+.cp-banner {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px 16px;
+  padding: 14px 18px;
+  border: 1px solid rgba(79, 134, 247, 0.35);
+  border-radius: 16px;
+  background: rgba(79, 134, 247, 0.1);
+}
+.cp-banner__text {
+  flex: 1;
+  min-width: 240px;
+}
+.cp-banner__text strong {
+  display: block;
+  font-weight: 600;
+}
+.cp-banner__text span {
+  font-size: 14px;
+  color: #c9dafc;
+}
+.cp-head,
+.arow--cp .arow__open {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) 104px 96px minmax(0, 1fr) 124px;
+  align-items: center;
+  gap: 14px;
+}
+.cp-head {
+  position: relative;
+  flex-shrink: 0;
+  padding: 12px 56px 12px 20px;
+  border-bottom: 1px solid var(--line);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.cp-head__refresh {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 36px;
+  height: 36px;
+}
+.arow--cp {
+  padding-left: 0;
+}
+.arow--cp.is-off {
+  opacity: 0.6;
+}
+.arow--cp .arow__open {
+  height: auto;
+  min-height: 68px;
+  padding: 8px 56px 8px 20px;
+}
+.cp-client {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.cp-who {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.cp-who__name,
+.cp-who__biz {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cp-who__name {
+  font-weight: 600;
+}
+.cp-who__biz {
+  font-size: 13px;
+  color: var(--muted);
+}
+.cp-price {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.cp-price small {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--muted);
+}
+.cp-hours {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 13px;
+  color: var(--text-2);
+}
+.cp-hours.is-over {
+  color: #ffa39e;
+  font-weight: 600;
+}
+.cp-bar {
+  display: block;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+.cp-bar__fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--accent);
+}
+.cp-bar__fill.is-near {
+  background: #e8a33d;
+}
+.cp-bar__fill.is-over {
+  background: #e5484d;
+}
+.astatus--cp-none,
+.astatus--cp-off {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-2);
+}
+.astatus--cp-off {
+  color: var(--muted);
+}
+
+/* panel */
+.cp-plan {
+  margin-top: 16px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--bg);
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+}
+.cp-plan strong {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 26px;
+}
+.cp-plan strong small {
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--muted);
+}
+.cp-plan span {
+  font-size: 14px;
+  color: var(--text-2);
+}
+.cp-invrow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--bg);
+  font-size: 14px;
+  color: var(--text-2);
+}
+.cp-warn {
+  border: 1px solid rgba(232, 163, 61, 0.4);
+  background: rgba(232, 163, 61, 0.1);
+  color: #f2c887;
+}
+.cp-hist {
+  display: flex;
+  gap: 6px;
+  margin-top: 12px;
+}
+.cp-hist__m {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 4px;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-2);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+}
+.cp-hist__m small {
+  font-size: 10px;
+}
+.cp-hist__m.is-paid {
+  background: rgba(63, 182, 139, 0.16);
+  color: #86daba;
+}
+.cp-hist__m.is-overdue {
+  background: rgba(229, 72, 77, 0.18);
+  color: #ffa39e;
+}
+.cp-logform {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 84px auto;
+  gap: 8px;
+  margin-top: 12px;
+}
+.cp-logform input {
+  width: 100%;
+  min-height: 42px;
+  padding: 8px 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  font-size: 15px;
+}
+.cp-logform input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(79, 134, 247, 0.25);
+}
+
+/* form */
+.cp-tiers {
+  display: grid;
+  gap: 8px;
+  margin-top: 6px;
+}
+.cp-tierbtn {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 2px 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--line-strong);
+  border-radius: 12px;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.cp-tierbtn span {
+  font-variant-numeric: tabular-nums;
+  color: var(--text-2);
+}
+.cp-tierbtn small {
+  grid-column: 1 / -1;
+  font-size: 13px;
+  color: var(--muted);
+}
+.cp-tierbtn[aria-pressed='true'] {
+  border-color: var(--accent);
+  background: var(--sel);
+}
+.cp-two {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.adm-body.has-panel .cp-head,
+.adm-body.has-panel .arow--cp .arow__open {
+  grid-template-columns: minmax(0, 1fr) 88px 116px;
+}
+.adm-body.has-panel .cp-head span:nth-child(2),
+.adm-body.has-panel .cp-head span:nth-child(4),
+.adm-body.has-panel .arow--cp .cp-tier,
+.adm-body.has-panel .arow--cp .cp-hours {
+  display: none;
+}
+@media (max-width: 1280px) {
+  .cp-head,
+  .arow--cp .arow__open {
+    grid-template-columns: minmax(0, 1fr) 88px 116px;
+  }
+  .cp-head span:nth-child(2),
+  .cp-head span:nth-child(4),
+  .arow--cp .cp-tier,
+  .arow--cp .cp-hours {
+    display: none;
+  }
+}
+@media (max-width: 900px) {
+  .cp-head {
+    display: none;
+  }
+  .arow--cp .arow__open,
+  .adm-body.has-panel .arow--cp .arow__open {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: none;
+    row-gap: 4px;
+    padding: 12px 16px;
+  }
+  .arow--cp .cp-price {
+    justify-self: end;
+  }
+  .arow--cp .cp-inv {
+    grid-column: 1 / -1;
+  }
+  .cp-logform,
+  .cp-two {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Status badge inside a section heading keeps its normal look. */
+.apanel__heading .astatus {
+  font-family: Inter, system-ui, sans-serif;
+  letter-spacing: 0;
+  text-transform: none;
+}
